@@ -8,13 +8,15 @@ se haga con una confianza menor a 0.6
 
 import cv2
 import numpy as np
+import joblib
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 from tensorflow.keras.models import load_model
 
-# Cargar modelo entrenado
+# Cargar modelo entrenado y el scaler
 model = load_model('models/rps_model.h5')
+scaler = joblib.load('models/rps_scaler.pkl') 
 class_names = ['Piedra', 'Papel', 'Tijeras']
 
 # Configurar detector de MediaPipe
@@ -45,21 +47,27 @@ while True:
         for landmark in hand_landmarks:
             landmarks.extend([landmark.x, landmark.y])
         
+        # Validar landmarks
+        if len(landmarks) != 42:
+            continue  # Omitir frame inválido
+        
         # Preprocesar y predecir
-        input_data = np.array([landmarks])
+        input_data = scaler.transform(np.array([landmarks])) #Normalizar los landmarks antes de predecir
         prediction = model.predict(input_data, verbose=0)
         class_id = np.argmax(prediction)
         confidence = np.max(prediction)
-        
+
         # Mostrar resultado
         # Si el mayor valor de confianza es mayor a 0.6, le otorgo esa etiqueta
         if confidence > 0.6:
             label = f"{class_names[class_id]} ({confidence*100:.1f}%)"
+            color = (0, 255, 0)  # Verde
         # Si es menor a 0.6, considero que el gesto no se reconocio correctamente.
         else:
             label = "Gesto no detectado"
+            color = (0, 0, 255)  # Rojo
         cv2.putText(frame, label, (10, 30),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0,255,0), 2)
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
     
     cv2.imshow('Clasificador de Gestos', frame)
     

@@ -22,7 +22,7 @@ try:
     y = np.load('data/rps_labels.npy')
     assert len(X) > 0, "El dataset está vacío"
     assert len(X) == len(y), "Datos y etiquetas no coinciden"
-except:
+except Exception as e:
     print("Error: No se encontraron los archivos del dataset. Ejecuta primero record-dataset.py")
     print(f"Error: {str(e)}")
     exit()
@@ -77,19 +77,36 @@ model.compile(optimizer='adam',
                        tf.keras.metrics.Precision(name='precision'),
                        tf.keras.metrics.Recall(name='recall')])
 
-# Entrenamiento
-history = model.fit(X_train, y_train_cat,
-                    epochs=50,
-                    batch_size=32,
-                    validation_data=(X_test, y_test_cat))
+# Definir EarlyStopping
+early_stop = tf.keras.callbacks.EarlyStopping(
+    monitor='val_loss',   # Métrica a monitorear
+    patience=5,           # Épocas sin mejora antes de detener
+    restore_best_weights=True  # Restaura los mejores pesos encontrados
+)
+
+# Entrenamiento con EarlyStopping
+history = model.fit(
+    X_train, y_train_cat,
+    epochs=50,
+    batch_size=32,
+    validation_data=(X_test, y_test_cat),
+    callbacks=[early_stop]
+)
 
 # Evaluación
 def evaluate_model():
+    """
+    Evalúa el modelo entrenado utilizando los datos de prueba.
+    
+    Calcula y muestra:
+    - Pérdida, accuracy, precisión y recall.
+    - Matriz de confusión visual.
+    - Reporte de clasificación detallado (precisión, recall, F1-score por clase).
+    
+    Utiliza las variables globales `model`, `X_test`, `y_test`, y `y_test_cat`.
+    """
     class_names = ['Piedra', 'Papel', 'Tijeras']
 
-    # Convertir y_test de one-hot a clases
-    y_test_classes = np.argmax(y_test_cat, axis=1)
-    
     # Generar predicciones
     y_pred = model.predict(X_test, verbose=0).argmax(axis=1)
 
@@ -97,7 +114,7 @@ def evaluate_model():
     test_loss, test_acc, test_prec, test_rec = model.evaluate(X_test, y_test_cat)
     print(f"\nMétricas: ")
     print(f"- Pérdida: {test_loss:.4f}")
-    print(f"- Precisión: {test_acc*100:.2f}%")
+    print(f"- Accuracy: {test_acc*100:.2f}%")
     print(f"- Precisión (por clase): {test_prec*100:.2f}%")
     print(f"- Recall: {test_rec*100:.2f}%")
     
@@ -111,12 +128,21 @@ def evaluate_model():
     
     # Reporte de clasificación
     print("\nReporte de Clasificación:")
-    print(classification_report(y_test_classes, y_pred, target_names=class_names))
+    print(classification_report(y_test, y_pred, target_names=class_names))
 
 evaluate_model()
 
 # Visualización del entrenamiento
 def plot_training():
+    """
+    Genera gráficos de la precisión y pérdida durante el entrenamiento.
+    
+    Muestra dos subplots:
+    1. Precisión en entrenamiento vs. validación por época.
+    2. Pérdida en entrenamiento vs. validación por época.
+    
+    Utiliza el historial guardado en `history.history`.
+    """
     plt.figure(figsize=(12, 4))
     
     plt.subplot(1, 2, 1)
