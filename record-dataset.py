@@ -39,7 +39,7 @@ if choice == '2' and os.path.exists(dataset_path) and os.path.exists(labels_path
     labels = np.load(labels_path).tolist()
     print(f"\nDataset cargado: {len(dataset)} muestras existentes\n")
 else:
-    if not os.path.exists(dataset_path) or os.path.exists(labels_path):
+    if choice == '2' and (not os.path.exists(dataset_path) or not os.path.exists(labels_path)):
         print(f"\nNo hay datasets existentes en {dataset_path} o en {labels_path}")
     # Inicializamos nuevos datasets
     dataset = []
@@ -70,6 +70,9 @@ while True:
     if not ret:
         break
 
+    # Copia del frame original para procesar
+    display_frame = frame.copy()
+
     # Convertimos el frame a formato MediaPipe
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
@@ -91,11 +94,11 @@ while True:
         ]
         
         for i, text in enumerate(info_text):
-            cv2.putText(frame, text, (10, 30 + 30*i),
+            cv2.putText(display_frame, text, (10, 30 + 30*i),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,0), 2)
 
     # Mostramos el frame para la carga de muestras
-    cv2.imshow('Dataset Collector', frame)
+    cv2.imshow('Dataset Collector', display_frame)
     
     # Manejo de teclas
     key = cv2.waitKey(1)
