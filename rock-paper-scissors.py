@@ -58,11 +58,11 @@ while True:
         confidence = np.max(prediction)
 
         # Mostrar resultado
-        # Si el mayor valor de confianza es mayor a 0.6, le otorgo esa etiqueta
-        if confidence > 0.6:
+        # Si el mayor valor de confianza es mayor a 0.75, le otorgo esa etiqueta
+        if confidence > 0.75:
             label = f"{class_names[class_id]} ({confidence*100:.1f}%)"
             color = (0, 255, 0)  # Verde
-        # Si es menor a 0.6, considero que el gesto no se reconocio correctamente.
+        # Si es menor a 0.75, considero que el gesto no se reconocio correctamente.
         else:
             label = "Gesto no detectado"
             color = (0, 0, 255)  # Rojo

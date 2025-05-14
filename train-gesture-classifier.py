@@ -7,7 +7,7 @@ import os
 import joblib
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout
+from tensorflow.keras.layers import Input, Dense, Dropout
 from tensorflow.keras.regularizers import l2
 from tensorflow.keras.utils import to_categorical
 from sklearn.model_selection import train_test_split
@@ -18,8 +18,8 @@ import seaborn as sns
 
 # Cargar dataset
 try:
-    X = np.load('data/rps_dataset.npy')
-    y = np.load('data/rps_labels.npy')
+    X = np.load('data/rps_dataset_200.npy')
+    y = np.load('data/rps_labels_200.npy')
     assert len(X) > 0, "El dataset está vacío"
     assert len(X) == len(y), "Datos y etiquetas no coinciden"
 except Exception as e:
@@ -32,6 +32,8 @@ except Exception as e:
 # Split dataset
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, stratify=y, random_state=42)
+X_train, X_val, y_train, y_val = train_test_split(
+    X_train, y_train, test_size=0.25, stratify=y_train, random_state=42)
 
 
 # Normalización
@@ -42,29 +44,20 @@ X_test = scaler.transform(X_test)
 # One-hot encoding para las etiquetas
 y_train_cat = to_categorical(y_train)
 y_test_cat = to_categorical(y_test)
+y_val_cat = to_categorical(y_val)
 
 # Construir modelo
-'''
 model = Sequential([
-    #El dropout y la regularización L2 ayudan a prevenir el sobreajuste.
-    Dense(64, activation='relu', input_shape=(42,)),
-    Dropout(0.2),
-    Dense(32, activation='relu'),
-    Dense(3, activation='softmax')
-])
-
-'''
-model = Sequential([
+    Input(shape=(42,)),
     # Capa 1 con regularización L2 (lambda=0.001)
-    Dense(32, activation='relu', 
-          input_shape=(42,), 
-          kernel_regularizer=l2(0.001)),
-    Dropout(0.2),
+    Dense(32, activation='relu',  
+          kernel_regularizer=l2(0.01)),
+    Dropout(0.3),
     
     # Capa 2 con regularización
     Dense(16, activation='relu', 
-          kernel_regularizer=l2(0.001)),
-    Dropout(0.2),
+          kernel_regularizer=l2(0.01)),
+    Dropout(0.3),
     
     # Capa de salida
     Dense(3, activation='softmax')
@@ -73,9 +66,8 @@ model = Sequential([
 
 model.compile(optimizer='adam',
               loss='categorical_crossentropy',
-              metrics=['accuracy',
-                       tf.keras.metrics.Precision(name='precision'),
-                       tf.keras.metrics.Recall(name='recall')])
+              metrics=['accuracy',]
+            )
 
 # Definir EarlyStopping
 early_stop = tf.keras.callbacks.EarlyStopping(
@@ -89,7 +81,7 @@ history = model.fit(
     X_train, y_train_cat,
     epochs=50,
     batch_size=32,
-    validation_data=(X_test, y_test_cat),
+    validation_data=(X_val, y_val_cat),
     callbacks=[early_stop]
 )
 
@@ -99,7 +91,7 @@ def evaluate_model():
     Evalúa el modelo entrenado utilizando los datos de prueba.
     
     Calcula y muestra:
-    - Pérdida, accuracy, precisión y recall.
+    - Pérdida, accuracy
     - Matriz de confusión visual.
     - Reporte de clasificación detallado (precisión, recall, F1-score por clase).
     
@@ -111,12 +103,10 @@ def evaluate_model():
     y_pred = model.predict(X_test, verbose=0).argmax(axis=1)
 
     # Obtener métricas
-    test_loss, test_acc, test_prec, test_rec = model.evaluate(X_test, y_test_cat)
+    test_loss, test_acc = model.evaluate(X_test, y_test_cat)
     print(f"\nMétricas: ")
     print(f"- Pérdida: {test_loss:.4f}")
     print(f"- Accuracy: {test_acc*100:.2f}%")
-    print(f"- Precisión (por clase): {test_prec*100:.2f}%")
-    print(f"- Recall: {test_rec*100:.2f}%")
     
     # Matriz de confusión
     cm = confusion_matrix(y_test, y_pred)
@@ -170,7 +160,7 @@ plot_training()
 os.makedirs('models', exist_ok=True)
 
 # Guardar modelo y escalador
-model.save('models/rps_model.h5')
+model.save('models/rps_model.keras')
 joblib.dump(scaler, 'models/rps_scaler.pkl')
 
 print("\nModelo y escalador guardados en la carpeta 'models'")
