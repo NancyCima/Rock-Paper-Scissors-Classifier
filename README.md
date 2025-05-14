@@ -29,13 +29,17 @@ python record-dataset.py
 - Presiona 0, 1, 2 para grabar piedra, papel o tijeras respectivamente
 - Presiona 'q' para salir
 - Los datos se guardan en `rps_dataset.npy` y `rps_labels.npy`
+- Se denota con un guión bajo y un numero, el numero de datos por clase que
+tiene el dataset. Por ejemplo, `rps_dataset_300.npy` tiene 300 ejemplos para
+cada clase.
 
 ### 2. Entrenar Modelo
 ```bash
 python train-gesture-classifier.py
 ```
 - Entrena con el dataset grabado
-- El modelo se guarda como `rps_model.h5`
+- El modelo se guarda como `rps_model.keras`
+- El scaler utilizado se guarda como `rps_scaler.pkl`
 
 ### 3. Ejecutar Clasificador
 ```bash

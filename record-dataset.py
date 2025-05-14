@@ -19,30 +19,32 @@ import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 
-# Configurar directorio de datos
+# Configuramos el directorio de datos
 DATA_DIR = 'data'
 os.makedirs(DATA_DIR, exist_ok=True)
 
-# Rutas de los datsets si existen
-dataset_path = os.path.join(DATA_DIR, 'rps_dataset.npy')
-labels_path = os.path.join(DATA_DIR, 'rps_labels.npy')
+# Obtenemos las rutas de los datsets si existen
+dataset_path = os.path.join(DATA_DIR, 'rps_dataset_300.npy')
+labels_path = os.path.join(DATA_DIR, 'rps_labels_300.npy')
 
-# Pedir modo de operación al usuario
+# Pedimos el modo de operación al usuario
 print("\nOpciones:")
 print("1. Crear nuevo dataset")
 print("2. Continuar con dataset existente")
 choice = input("Seleccione una opción (1 o 2): ")
 
 if choice == '2' and os.path.exists(dataset_path) and os.path.exists(labels_path):
-    # Cargar datos existentes
+    # Cargamos datos existentes
     dataset = np.load(dataset_path).tolist()
     labels = np.load(labels_path).tolist()
-    print(f"\nDataset cargado: {len(dataset)} muestras existentes")
+    print(f"\nDataset cargado: {len(dataset)} muestras existentes\n")
 else:
-    # Inicializar nuevos datasets
+    if not os.path.exists(dataset_path) or os.path.exists(labels_path):
+        print(f"\nNo hay datasets existentes en {dataset_path} o en {labels_path}")
+    # Inicializamos nuevos datasets
     dataset = []
     labels = []
-    print("\nCreando nuevo dataset")
+    print("\nCreando nuevo dataset\n")
 
 total_samples = len(dataset)  # Contador total de muestras
 new_samples = 0 # Contador de muestras nuevas
@@ -60,7 +62,7 @@ options = vision.HandLandmarkerOptions(
 )
 detector = vision.HandLandmarker.create_from_options(options)
 
-# Configurar cámara
+# Configuramos la cámara
 cap = cv2.VideoCapture(0)
 
 while True:
@@ -68,7 +70,7 @@ while True:
     if not ret:
         break
 
-    # Convertir frame a formato MediaPipe
+    # Convertimos el frame a formato MediaPipe
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
     
@@ -78,10 +80,10 @@ while True:
     if detection_result.hand_landmarks:
         hand_landmarks = detection_result.hand_landmarks[0]
         
-        # Extraer coordenadas normalizadas (x,y)
+        # Extraemos coordenadas normalizadas (x,y)
         landmarks = [lm.x for lm in hand_landmarks] + [lm.y for lm in hand_landmarks]
         
-        # Mostrar información
+        # Mostramos las clases y la cantidad de muestras en pantalla
         info_text = [
             "0: Piedra | 1: Papel | 2: Tijeras",
             f"Muestras totales: {total_samples + new_samples}", # Muestra el total acumulado
@@ -92,7 +94,7 @@ while True:
             cv2.putText(frame, text, (10, 30 + 30*i),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,0), 2)
 
-    # Mostrar frame
+    # Mostramos el frame para la carga de muestras
     cv2.imshow('Dataset Collector', frame)
     
     # Manejo de teclas
@@ -105,9 +107,9 @@ while True:
             labels.append(label)
             dataset.append(landmarks)
             new_samples += 1 
-            print(f"Muestra {total_samples + new_samples}: {label}")
+            print(f"\nMuestra {total_samples + new_samples}: {label}")
 
-# Guardar dataset combinado
+# Guardamos dataset combinado
 if dataset:
     final_dataset = np.array(dataset)
     final_labels = np.array(labels)
@@ -127,6 +129,6 @@ if dataset:
 else:
     print("\nNo se guardaron nuevas muestras")
 
-# Liberar recursos
+# Liberamos recursos
 cap.release()
 cv2.destroyAllWindows()

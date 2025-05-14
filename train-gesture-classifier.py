@@ -7,7 +7,7 @@ import os
 import joblib
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Input, Dense, Dropout
+from tensorflow.keras.layers import Input, Dense, Dropout, GaussianNoise
 from tensorflow.keras.regularizers import l2
 from tensorflow.keras.utils import to_categorical
 from sklearn.model_selection import train_test_split
@@ -18,8 +18,8 @@ import seaborn as sns
 
 # Cargar dataset
 try:
-    X = np.load('data/rps_dataset_200.npy')
-    y = np.load('data/rps_labels_200.npy')
+    X = np.load('data/rps_dataset_300.npy')
+    y = np.load('data/rps_labels_300.npy')
     assert len(X) > 0, "El dataset está vacío"
     assert len(X) == len(y), "Datos y etiquetas no coinciden"
 except Exception as e:
@@ -40,16 +40,23 @@ X_train, X_val, y_train, y_val = train_test_split(
 scaler = StandardScaler()
 X_train = scaler.fit_transform(X_train)
 X_test = scaler.transform(X_test)
+X_val = scaler.transform(X_val)
 
 # One-hot encoding para las etiquetas
 y_train_cat = to_categorical(y_train)
 y_test_cat = to_categorical(y_test)
 y_val_cat = to_categorical(y_val)
 
-# Construir modelo
+# Construimos el modelo
+# Este es un modelo simple, condos capas de 32 y 16 neuronas respectivamente. 
+# Tiene activación de relu, y regularización y dropout para evitar el overfitting.
+# La capa de salida tiene tres neuronas, representando las 3 clases
+# y una activación de softmax.
 model = Sequential([
     Input(shape=(42,)),
-    # Capa 1 con regularización L2 (lambda=0.001)
+    GaussianNoise(0.01),  # Simula variaciones en landmarks
+
+    # Capa 1 con regularización L2 (lambda=0.01)
     Dense(32, activation='relu',  
           kernel_regularizer=l2(0.01)),
     Dropout(0.3),
@@ -63,18 +70,22 @@ model = Sequential([
     Dense(3, activation='softmax')
 ])
 
-
+# Compilamos
 model.compile(optimizer='adam',
               loss='categorical_crossentropy',
-              metrics=['accuracy',]
+              metrics=['accuracy']
             )
 
-# Definir EarlyStopping
+# Definimos EarlyStopping
 early_stop = tf.keras.callbacks.EarlyStopping(
     monitor='val_loss',   # Métrica a monitorear
-    patience=5,           # Épocas sin mejora antes de detener
+    patience=3,           # Épocas sin mejora antes de detener
     restore_best_weights=True  # Restaura los mejores pesos encontrados
 )
+
+# Le daremos un peso un poco mayor a la clase "Tijera" ya que
+# esta clase tiende a no precedirse correctamente
+class_weights = {0: 1.0, 1: 1.0, 2: 1.5}
 
 # Entrenamiento con EarlyStopping
 history = model.fit(
@@ -82,7 +93,8 @@ history = model.fit(
     epochs=50,
     batch_size=32,
     validation_data=(X_val, y_val_cat),
-    callbacks=[early_stop]
+    callbacks=[early_stop],
+    class_weight=class_weights
 )
 
 # Evaluación
@@ -99,10 +111,10 @@ def evaluate_model():
     """
     class_names = ['Piedra', 'Papel', 'Tijeras']
 
-    # Generar predicciones
+    # Generamos predicciones
     y_pred = model.predict(X_test, verbose=0).argmax(axis=1)
 
-    # Obtener métricas
+    # Obtenems métricas
     test_loss, test_acc = model.evaluate(X_test, y_test_cat)
     print(f"\nMétricas: ")
     print(f"- Pérdida: {test_loss:.4f}")
@@ -156,10 +168,10 @@ def plot_training():
 
 plot_training()
 
-# Crear directorios si no existen
+# Creamos directorios si no existen
 os.makedirs('models', exist_ok=True)
 
-# Guardar modelo y escalador
+# Guardamos modelo y escalador
 model.save('models/rps_model.keras')
 joblib.dump(scaler, 'models/rps_scaler.pkl')
 
