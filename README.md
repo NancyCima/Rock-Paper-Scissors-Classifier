@@ -2,7 +2,7 @@
 
 Sistema de visión por computadora que detecta y clasifica gestos de mano en tiempo real usando MediaPipe y redes neuronales.
 
-![Clasificador](images\Ejemplo.png)
+![Clasificador](images/Ejemplo.png)
 
 ## Características Principales
 - 🖐️ Detección de landmarks de mano con MediaPipe
